@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graph Coloring</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .graph-container {
+            border: 1px solid #dee2e6;
+            border-radius: 0.375rem;
+            background: #f8f9fa;
+            height: calc(100vh - 2rem);
+            min-height: 600px;
+            touch-action: none;
+        }
+        
+        #graph {
+            width: 100%;
+            height: 100%;
+            cursor: move;
+        }
+        
+        .root-group {
+            pointer-events: all;
+        }
+        
+        .node {
+            cursor: pointer;
+        }
+        
+        .node circle {
+            cursor: pointer;
+        }
+        
+        .node text {
+            pointer-events: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        
+        .drag-line {
+            pointer-events: none;
+        }
+        
+        .control-panel-wrapper {
+            height: calc(100vh - 2rem);
+            position: relative;
+        }
+        
+        .control-panel {
+            height: 100%;
+            overflow-y: auto;
+            padding-right: 10px;
+            scroll-behavior: smooth;
+        }
+        
+        .btn-control {
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+
+        #fitness-chart {
+            width: 100%;
+            height: 200px;
+            margin-top: 1rem;
+        }
+
+        .fitness-line {
+            fill: none;
+            stroke: #2196F3;
+            stroke-width: 2;
+        }
+
+        .axis line, .axis path {
+            stroke: #999;
+        }
+
+        .axis text {
+            fill: #666;
+        }
+
+        .control-panel::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .control-panel::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .control-panel::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        .control-panel::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-8 mb-3">
+                <div class="graph-container">
+                    <svg id="graph">
+                        <g class="root-group"></g>
+                    </svg>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="control-panel-wrapper">
+                    <div class="control-panel">
+                        <div class="card mb-3">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="card-title mb-0">Controls</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="colorCount" class="form-label">Number of Colors:</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="colorCount" min="2" max="10" value="3">
+                                        <button class="btn btn-outline-secondary" type="button" id="updateColors">
+                                            <i class="bi bi-palette"></i> Update
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <div class="card bg-light">
+                                        <div class="card-body p-2">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="fw-bold">AVGBest Fitness:</span>
+                                                <span id="bestFitness" class="badge bg-success fs-6">0</span>
+                                            </div>
+                                            <small class="text-muted d-block mt-1">
+                                                (Higher values indicate fewer conflicts)
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button id="calculate" class="btn btn-success btn-control">
+                                    <i class="bi bi-calculator"></i> Recalculate Coloring
+                                </button>
+                                <button id="reset" class="btn btn-primary btn-control">
+                                    <i class="bi bi-arrow-counterclockwise"></i> Reset Graph
+                                </button>
+                                <button id="clearGraph" class="btn btn-danger btn-control">
+                                    <i class="bi bi-trash"></i> Clear Graph
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Genetic Algorithm Parameters</label>
+                            <div class="input-group mb-2">
+                                <span class="input-group-text">Population</span>
+                                <input type="number" class="form-control" id="populationSize" min="10" max="1000" value="50" title="Size of the population">
+                            </div>
+                            <div class="input-group mb-2">
+                                <span class="input-group-text">Generations</span>
+                                <input type="number" class="form-control" id="generations" min="10" max="1000" value="100" title="Number of generations">
+                            </div>
+                            <div class="input-group mb-2">
+                                <span class="input-group-text">Mutation Rate</span>
+                                <input type="number" class="form-control" id="mutationRate" min="0" max="1" step="0.01" value="0.1" title="Probability of mutation (0-1)">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+
+                        <div class="card mb-3">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="card-title mb-0">Generation Playback</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="generation-player">
+                                    <div class="text-center mb-3">
+                                        <span class="text-lg fw-bold" id="generation-counter">
+                                            Generation 0 / 0
+                                        </span>
+                                        <br>
+                                        <span class="text-muted" id="fitness-value">
+                                            Fitness: 0
+                                        </span>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <input 
+                                            type="range" 
+                                            class="form-range" 
+                                            id="generation-slider" 
+                                            min="0" 
+                                            max="0" 
+                                            value="0">
+                                    </div>
+
+                                    <div class="d-flex justify-content-center gap-2 mb-3">
+                                        <button class="btn btn-outline-secondary" id="reset-btn">
+                                            <i class="bi bi-skip-start-fill"></i>
+                                        </button>
+                                        <button class="btn btn-outline-secondary" id="back-btn">
+                                            <i class="bi bi-skip-backward-fill"></i>
+                                        </button>
+                                        <button class="btn btn-primary" id="play-btn">
+                                            <i class="bi bi-play-fill" id="play-icon"></i>
+                                        </button>
+                                        <button class="btn btn-outline-secondary" id="forward-btn">
+                                            <i class="bi bi-skip-forward-fill"></i>
+                                        </button>
+                                    </div>
+
+                                    <div>
+                                        <label class="form-label d-flex justify-content-between">
+                                            <span>Animation Speed</span>
+                                            <span class="text-muted" id="speed-value">500ms</span>
+                                        </label>
+                                        <input 
+                                            type="range" 
+                                            class="form-range" 
+                                            id="speed-slider" 
+                                            min="100" 
+                                            max="1000" 
+                                            value="500">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card mb-3">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="card-title mb-0">Fitness Evolution</h5>
+                            </div>
+                            <div class="card-body">
+                                <svg id="fitness-chart"></svg>
+                            </div>
+                        </div>
+                        
+                        <div class="card mb-3">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="card-title mb-0">Instructions</h5>
+                            </div>
+                            <div class="card-body">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item">
+                                        <i class="bi bi-plus-circle"></i>
+                                        Click on empty space to add a new node
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-arrow-left-right"></i>
+                                        Click on one node, then another to create an edge
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-palette"></i>
+                                        Use "Recalculate Coloring" to run the genetic algorithm
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-sliders"></i>
+                                        Adjust the number of colors and update to see different solutions
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-play-fill"></i>
+                                        Use the player controls to watch how the coloring evolves
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-zoom-in"></i>
+                                        Use mouse wheel to zoom, drag to pan, double-click to reset view
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.1/font/bootstrap-icons.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script type="module" src="visualization.js"></script>
+</body>
+</html>
