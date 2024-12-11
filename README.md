@@ -2,6 +2,9 @@
 
 This project provides an interactive visualization of graph coloring using genetic algorithms. Users can create custom graphs, adjust algorithm parameters, and watch the evolution of solutions in real-time.
 
+## The Graph Coloring Problem
+Graph coloring is a fundamental problem in computer science and mathematics where the goal is to assign colors to vertices (nodes) of a graph such that no adjacent vertices share the same color. The minimum number of colors needed to achieve this is called the chromatic number of the graph (https://en.wikipedia.org/wiki/Graph_coloring).
+
 ## Features
 
 - **Interactive Graph Creation**
